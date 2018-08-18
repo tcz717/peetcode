@@ -1,3 +1,4 @@
+# pylint: skip-file
 import re
 import json
 from time import sleep
@@ -121,7 +122,7 @@ vars.Add('user', 'The username of your Leetcode account')
 vars.Add('pass', 'The password of your Leetcode account')
 vars.Add(EnumVariable('lang', 'The prject language', 'cpp',
                       allowed_values=LANGS.keys()))
-vars.Add('id', 'The problem id', 'UNKNOWN')
+vars.Add('id', 'The problem id', 'PROBLEMID')
 vars.Add('MAXSUBRETRY', 'The maxinum submit retry times', 10)
 
 # Environment
@@ -139,50 +140,54 @@ env.Alias('update', meta)
 
 # Login
 cookies = env.Command('.cookies', None, login)
-env.Alias('login', cookies)
-env.AlwaysBuild('login')
-
-env.Default(None)
+Alias('login', cookies)
+AlwaysBuild(Alias('login'))
 
 # Problems
 for p in lc.allproblems.values():
-    proj = env.Command('${PROJECT.id}-create', None, Action(
-        create_project, 'Creating new ${PROJECT.lang} project "${PROJECT.title}" ...'), PROJECT=Project(p, env['lang']))
-    env.Pseudo(proj)
+    proj = env.Clone(PROJECT=Project(p, env['lang']))
+    create = proj.Command('${PROJECT.id}-create', None, Action(
+        create_project, 'Creating new ${PROJECT.lang} project "${PROJECT.title}" ...'))
+    proj.Pseudo(create)
 
 # Projects
 for p in lc.allprojects:
-    src = env.File(p.srcpath)
+    proj = env.Clone(PROJECT=p, id=p.id, lang=p.lang)
+    src = proj.File(p.srcpath)
 
     # Generate compilable code
-    gen = env.Command(p.genpath, src, Action(
-        generate_code, "Generating compilable code for $SOURCE .."), PROJECT=p)
-    env.Precious(gen)
-    env.Alias('{}-{}-gen'.format(p.id, p.lang), gen)
-    env.Alias('{}-gen'.format(p.id), gen)
+    gen = proj.Command(p.genpath, src, Action(
+        generate_code, "Generating compilable code for $SOURCE .."))
+    proj.Precious(gen)
+    proj.Alias('$id-$lang-gen', gen)
+    proj.Alias('$id-gen', gen)
 
     # Extract uploadable code
-    upload = env.Command(p.uploadpath, src, extract, PROJECT=p)
-    env.Alias('{}-{}-upload'.format(p.id, p.lang), upload)
-    env.Alias('{}-upload'.format(p.id), upload)
+    upload = proj.Command(p.uploadpath, src, extract)
+    proj.Alias('$id-$lang-upload', upload)
+    proj.Alias('$id-upload'.format(p.id), upload)
 
-    program = env.Program(p.execpath, gen)
-    env.Alias('{}-{}'.format(p.id, p.lang), program)
-    env.Alias('{}'.format(p.id), program)
+    program = proj.Program(p.execpath, gen)
+    proj.Alias('$id-$lang', program)
+    proj.Alias('$id'.format(p.id), program)
 
-    testdir = env.Dir(p.dir).Dir('test')
+    testdir = proj.Dir('test', p.dir)
     testin = testdir.glob('*.in')
     testexp = testdir.glob('*.exp')
-    testout = [env.Test(t, PROGRAM=program) for t in testin]
-    testdiff = [env.Diff(t) for t in testexp]
-    env.AlwaysBuild(testout)
-    env.Depends(testout, program)
-    env.Depends(testdiff, testout)
-    env.Pseudo(testdiff)
-    env.Alias('{}-{}-test'.format(p.id, p.lang), [testout, testdiff])
-    env.Alias('{}-test'.format(p.id), [testout, testdiff])
+    testout = [proj.Test(t, PROGRAM=program) for t in testin]
+    testdiff = [proj.Diff(t) for t in testexp]
+    proj.AlwaysBuild(testout)
+    proj.Depends(testout, program)
+    proj.Depends(testdiff, testout)
+    proj.Pseudo(testdiff)
+    proj.Alias('$id-$lang-test', [testout, testdiff])
+    proj.Alias('$id-test', [testout, testdiff])
 
-    proj_submit = env.Command(
-        '{}-{}-submit'.format(p.id, p.lang), upload, submit, PROJECT=p)
-    env.Depends(proj_submit, 'login')
-    env.Pseudo(proj_submit)
+    proj_submit = proj.Command('$id-$lang-submit', upload, submit)
+    proj.Depends(proj_submit, cookies)
+    proj.Pseudo(proj_submit)
+
+Alias('create', env.Alias('$id-create'))
+Alias('test', env.Alias('$id-$lang-test'))
+Alias('submit', env.Alias('$id-$lang-submit'))
+Default(env.Alias('$id-$lang'))
