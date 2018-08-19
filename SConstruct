@@ -60,6 +60,11 @@ def submit_code(target, source, env):
                  result['input'])
         writeall(os.path.join(pro.testdir, str(subid) + '.exp'),
                  result['expected_output'])
+    elif status == 15:
+        print('Got runtime error `{}` with last input: {}'.format(
+            result['runtime_error'], result['last_testcase']))
+        writeall(os.path.join(pro.testdir, str(subid) + '.in'),
+                 result['last_testcase'])
     else:
         for k, v in result.items():
             print('{} = {}'.format(k, v))
