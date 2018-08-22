@@ -9,7 +9,8 @@ Peetcode requires python3.6 or beyond version. Then,
 ```bash
 git clone https://github.com/tcz717/peetcode.git
 cd peetcode
-pip install -r requirements.txt
+# remember to insatll scons in python3.6
+pip3.6 install -r requirements.txt
 ```
 
 If you meet error like `Unable to find engine files`. Try following commands:
@@ -18,7 +19,7 @@ If you meet error like `Unable to find engine files`. Try following commands:
 # change python to python3 or python3.6
 sudo sed -i 's/#! \/usr\/bin\/env python$/#! \/usr\/bin\/env python3.6/' $(which scons)
 # update PYTHONPATH variable
-sudo sed -i 'a PYTHONPATH="/usr/local/lib/python3.6/dist-packages/scons-3.0.1"' /etc/environment
+sudo sed -i '$a export PYTHONPATH="/usr/local/lib/python3.6/dist-packages/scons-3.0.1"' ~/.profile
 ```
 
 ## Usage
