@@ -12,13 +12,13 @@ cd peetcode
 pip install -r requirements.txt
 ```
 
-If you have multiple version python, you may need to modify the scons's file to specify python version,
+If you meet error like `Unable to find engine files`. Try following commands:
 
 ```bash
-vim $(which scons)
 # change python to python3 or python3.6
-# exmaple
-#! /usr/bin/env python3.6
+sudo sed -i 's/#! \/usr\/bin\/env python$/#! \/usr\/bin\/env python3.6/' $(which scons)
+# update PYTHONPATH variable
+sudo sed -i 'a PYTHONPATH="/usr/local/lib/python3.6/dist-packages/scons-3.0.1"' /etc/environment
 ```
 
 ## Usage
