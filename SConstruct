@@ -90,7 +90,7 @@ def create_project(target, source, env):
     content = re.sub(r'(\r\n)+', '\n', content)
     defaultcode = proj.lang.beginmark + '\n' + \
         re.sub(r'(\r\n)+', '\n', defaultcode) + '\n' + proj.lang.endmark
-    template = env.File('template${PROJECT.lang.ext}', 'templates')
+    template = env.File('$TEMPLATE${PROJECT.lang.ext}', 'templates')
     print(template)
     if template.exists():
         print('applying template')
@@ -109,6 +109,8 @@ def create_project(target, source, env):
 test = Builder(action=Action('time -f "Time: %Us" $PROGRAM < $SOURCE | tee $TARGET | echo "Output: $$(cat -)"',
                              'Testing $SOURCE ...'),
                suffix='.out', src_suffix='.in')
+debug = Builder(action=Action('$GDB $PROGRAM -ex "set args < $SOURCE"',
+                              'Lauching GDB ...'), src_suffix='.in')
 diff = Builder(action=Action('diff -w $SOURCE ${SOURCE.base}.out && echo Accepted',
                              'Comparing $SOURCE and ${SOURCE.base}.out ...'),
                suffix='.diff', src_suffix='.exp')
@@ -128,15 +130,16 @@ vars.Add('pass', 'The password of your Leetcode account')
 vars.Add(EnumVariable('lang', 'The prject language', 'cpp',
                       allowed_values=LANGS.keys()))
 vars.Add('id', 'The problem id', 'PROBLEMID')
-vars.Add('MAXSUBRETRY', 'The maxinum submit retry times', 10)
 
 # Environment
 env = Environment(CXXFLAGS='--std=c++11 -g', variables=vars)
 env.Append(BUILDERS={
     'Test': test,
-    'Diff': diff
+    'Diff': diff,
+    'Debug': debug
 })
-Help(vars.GenerateHelpText(env))
+env.SetDefault(GDB='gdb', TEMPLATE='template', MAXSUBRETRY=10)
+# env.Help(vars.GenerateHelpText(env))
 
 # Cache Update
 meta = env.Command('lc.json', None, lambda target, source, env: lc.update())
@@ -180,11 +183,15 @@ for p in lc.allprojects:
     testin = testdir.glob('*.in')
     testexp = testdir.glob('*.exp')
     testout = [proj.Test(t, PROGRAM=program) for t in testin]
+    debug = [proj.Debug(
+        '$id-$lang-${SOURCE.filebase}-debug', t, PROGRAM=program) for t in testin]
     testdiff = [proj.Diff(t) for t in testexp]
     proj.AlwaysBuild(testout)
     proj.Depends(testout, program)
     proj.Depends(testdiff, testout)
+    proj.Depends(debug, testout)
     proj.Pseudo(testdiff)
+    proj.Pseudo(debug)
     proj.Alias('$id-$lang-test', [testout, testdiff])
     proj.Alias('$id-test', [testout, testdiff])
 

@@ -60,6 +60,13 @@ scons 1-test
 scons 1-c-test
 ```
 
+### Debug Test Case
+
+```bash
+# run gdb for 1-cpp project and use sample.in as input
+scons 1-cpp-sample-debug
+```
+
 ### Login and Submit Your code
 
 To submit your code, you need to log in leetcode first
